@@ -71,7 +71,6 @@ tensorboard-plugin-wit==1.8.1 ; python_version >= "3.8" and python_version < "3.
 tensorflow==2.15.0 ; python_version >= "3.8" and python_version < "3.11"
 tqdm==4.65.0 ; python_version >= "3.8" and python_version < "3.11"
 typing-extensions==4.5.0 ; python_version >= "3.8" and python_version < "3.11"
-tyro==0.5.10 ; python_version >= "3.8" and python_version < "3.11"
 urllib3==1.26.15 ; python_version >= "3.8" and python_version < "3.11"
 wandb==0.13.11 ; python_version >= "3.8" and python_version < "3.11"
 werkzeug==2.2.3 ; python_version >= "3.8" and python_version < "3.11"
