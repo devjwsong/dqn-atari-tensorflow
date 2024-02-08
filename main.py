@@ -5,6 +5,9 @@ from stable_baselines3.common.atari_wrappers import (
     MaxAndSkipEnv,
     NoopResetEnv,
 )
+from stable_baselines3.common.buffers import ReplayBuffer
+from deep_q_network import DeepQNetwork
+from utils import fix_seed
 
 import stable_baselines3 as sb3
 import gymnasium as gym
@@ -12,19 +15,11 @@ import tensorflow as tf
 import wandb
 import argparse
 import time
-import random
-import numpy as np
 
 PROJECT_NAME = "RLMaster"
 
 
-# Fixing the random seed for reproducibility.
-def fix_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-    tf.random.set_seed(seed)
-
-
+# Making an environment.
 def make_env(seed, env_id, record, run_name):
     if record:
         env = gym.make(env_id, render_mode="rgb_array")
@@ -54,11 +49,12 @@ if __name__=='__main__':
     parser.add_argument('--exp_name', type=str, default="dqn", help="Any free-from string to indicate the experiment name.")
     parser.add_argument('--track', action='store_true', help="Setting whether to track the training using Wandb or not.")
     parser.add_argument('--record', action='store_true', help="Setting whether to record the video of the agent or not.")
+    parser.add_argument('--buffer_size', type=int, default=1e4, help="The size of the replay buffer.")
 
     args = parser.parse_args()
 
     # Initializing the setting.
-    run_name = f"{args.env_id}-{args.exp_name}-{args.seed}-{int(time.time())}"
+    run_name = f"{args.env_id.replace('/', '_')}-{args.exp_name}-{args.seed}-{int(time.time())}"
     if args.track:
         wandb.init(
             project=PROJECT_NAME,
@@ -76,3 +72,23 @@ if __name__=='__main__':
     # Setting the environment.
     env = make_env(args.seed, args.env_id, args.record, run_name)
     assert isinstance(env.action_space, gym.spaces.Discrete), "Only discrete action space is supported."
+
+    # Initializing two networks. (Double Deep Q-Learning)
+    deep_q_network = DeepQNetwork(num_actions=env.action_space.n)
+    target_network = DeepQNetwork(num_actions=env.action_space.n)
+    target_network = tf.keras.models.clone_model(deep_q_network)
+
+    # Setting the replay buffer.
+    replay_buffer = ReplayBuffer(
+        args.buffer_size,
+        env.observation_space,
+        env.action_space,
+        optimize_memory_usage=True,
+        handle_timeout_termination=False
+    )
+
+    start_time = time.time()
+    
+    # Main logic.
+    obs, _ = env.reset(seed=args.seed)
+    
