@@ -20,6 +20,18 @@ import numpy as np
 
 PROJECT_NAME = "RLMaster"
 
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+  # Setting the GPU memory.
+  try:
+    tf.config.set_logical_device_configuration(
+        gpus[0],
+        [tf.config.LogicalDeviceConfiguration(memory_limit=5120)])
+    logical_gpus = tf.config.list_logical_devices('GPU')
+  except RuntimeError as e:
+    # Virtual devices must be set before GPUs have been initialized
+    print(e)
+
 
 # Making an environment.
 def make_env(seed, env_id, record, run_name):
@@ -114,4 +126,3 @@ if __name__=='__main__':
         # TODO: Saving the data into the buffer.
 
         obs = next_obs
-        
