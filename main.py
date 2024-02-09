@@ -7,7 +7,7 @@ from stable_baselines3.common.atari_wrappers import (
 )
 from stable_baselines3.common.buffers import ReplayBuffer
 from deep_q_network import DeepQNetwork
-from utils import fix_seed
+from utils import fix_seed, linear_schedule
 
 import stable_baselines3 as sb3
 import gymnasium as gym
@@ -15,6 +15,8 @@ import tensorflow as tf
 import wandb
 import argparse
 import time
+import random
+import numpy as np
 
 PROJECT_NAME = "RLMaster"
 
@@ -50,6 +52,10 @@ if __name__=='__main__':
     parser.add_argument('--track', action='store_true', help="Setting whether to track the training using Wandb or not.")
     parser.add_argument('--record', action='store_true', help="Setting whether to record the video of the agent or not.")
     parser.add_argument('--buffer_size', type=int, default=1e4, help="The size of the replay buffer.")
+    parser.add_argument('--total_timesteps', type=int, default=1e7, help="The total timesteps of the experiment.")
+    parser.add_argument('--start_eps', type=float, default=1.0, help="The starting value of epslion.")
+    parser.add_argument('--end_eps', type=float, default=1e-2, help="The ending value of epsilon.")
+    parser.add_argument('--exploration_fraction', type=float, default=0.1, help="The fraction of the steps to adjust epsilon.")
 
     args = parser.parse_args()
 
@@ -90,5 +96,22 @@ if __name__=='__main__':
     start_time = time.time()
     
     # Main logic.
-    obs, _ = env.reset(seed=args.seed)
-    
+    obs, _ = env.reset(seed=args.seed)  # obs: (F, W, H)
+    for step in range(args.total_timesteps):
+        eps = linear_schedule(args.start_eps, args.end_eps, args.exploration_fraction * args.total_timesteps, step)
+        if random.random() < eps:  # Exploration.
+            action = env.action_space.sample()
+        else:  # Exploitation.
+            obs = np.expand_dims(np.transpose(np.asarray(obs, dtype=float), (1,2,0)), axis=0)  # (1, W, H, F)
+            q_values = deep_q_network(obs)  # (A)
+            action = np.argmax(q_values)
+        
+        # Executing the action and move on.
+        next_obs, rewards, terminations, truncations, infos = env.step(action)
+
+        # TODO: Recoding rewards for plotting.
+
+        # TODO: Saving the data into the buffer.
+
+        obs = next_obs
+        
