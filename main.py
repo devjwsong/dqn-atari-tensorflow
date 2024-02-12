@@ -6,6 +6,7 @@ from stable_baselines3.common.atari_wrappers import (
     NoopResetEnv,
 )
 from stable_baselines3.common.buffers import ReplayBuffer
+from tqdm import tqdm
 from deep_q_network import DeepQNetwork
 from utils import fix_seed, linear_schedule
 
@@ -83,7 +84,9 @@ if __name__=='__main__':
             save_code=True
         )
 
-    # TODO: Adding Tensorboard callback.
+    # Adding the Tensorboard writer.
+    logdir = f"logs/{run_name}"
+    writer = tf.summary.create_file_writer(logdir)
 
     fix_seed(args.seed)
 
@@ -109,8 +112,9 @@ if __name__=='__main__':
     
     # Main logic.
     obs, _ = env.reset(seed=args.seed)  # obs: (F, W, H)
-    for step in range(args.total_timesteps):
-        eps = linear_schedule(args.start_eps, args.end_eps, args.exploration_fraction * args.total_timesteps, step)
+    print("Collecting the observed experience...")
+    for global_step in tqdm(range(args.total_timesteps)):
+        eps = linear_schedule(args.start_eps, args.end_eps, args.exploration_fraction * args.total_timesteps, global_step)
         if random.random() < eps:  # Exploration.
             action = env.action_space.sample()
         else:  # Exploitation.
@@ -121,7 +125,14 @@ if __name__=='__main__':
         # Executing the action and move on.
         next_obs, rewards, terminations, truncations, infos = env.step(action)
 
-        # TODO: Recoding rewards for plotting.
+        # Recoding rewards for plotting.
+        if "final_info" in infos:
+            for info in infos["final_info"]:
+                if info and "episode" in info:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    with writer.as_default():
+                        tf.summary.scalar("charts/episodic_return", info["episode"]["r"], step=global_step)
+                        tf.summary.scalar("charts/episodic_length", info["episode"]["l"], step=global_step)
 
         # TODO: Saving the data into the buffer.
 
