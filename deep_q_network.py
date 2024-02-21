@@ -14,13 +14,12 @@ class DeepQNetwork(tf.keras.Model):
         self.linear2 = tf.keras.layers.Dense(num_actions)
 
     def call(self, x):  # x: (N, W, H, F)
-        x = self.conv1(x)
+        x = self.conv1(x / 255.0)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.flatten(x)
         x = self.linear1(x)
-        x = self.linear2(x)
-        return x / 255.0
+        return self.linear2(x)
 
     def get_config(self):
         base_config = super().get_config()
