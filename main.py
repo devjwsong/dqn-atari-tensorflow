@@ -7,6 +7,7 @@ from stable_baselines3.common.atari_wrappers import (
 )
 from tqdm import tqdm
 from deep_q_network import DeepQNetwork
+from evaluate import evaluate
 from utils import fix_seed, linear_schedule, convert_into_tensor, convert_shape
 from tf_agents.replay_buffers.py_uniform_replay_buffer import PyUniformReplayBuffer
 from tf_agents.specs.tensor_spec import to_nest_array_spec
@@ -72,6 +73,7 @@ if __name__=='__main__':
     parser.add_argument('--record', action='store_true', help="Setting whether to record the video of the agent or not.")
     parser.add_argument('--buffer_size', type=int, default=1e4, help="The size of the replay buffer.")
     parser.add_argument('--plotting_frequency', type=int, default=100, help="The frequency of step for plotting into the Tensorboard.")
+    parser.add_argument('--save_model', action='store_true', help="Setting whether to save the trained model.")
 
     # Arguments for trianing the policy.
     parser.add_argument('--total_timesteps', type=int, default=1e7, help="The total timesteps of the experiment.")
@@ -142,7 +144,7 @@ if __name__=='__main__':
         if random.random() < eps:  # Exploration.
             actions = np.array([envs.single_action_space.sample() for i in range(envs.num_envs)])
         else:  # Exploitation.
-            q_values = deep_q_network(convert_into_tensor(obs))  # (N, A)
+            q_values = deep_q_network.predict_on_batch(convert_into_tensor(obs))  # (N, A)
             actions = tf.math.argmax(q_values, axis=1).numpy()  # (N)
         
         # Executing the action and move on.
@@ -172,7 +174,7 @@ if __name__=='__main__':
             if global_step % args.training_frequency == 0:
                 data = replay_buffer.get_next(sample_batch_size=args.batch_size)
 
-                max_next_vals = tf.reduce_max(target_network(tf.convert_to_tensor(convert_shape(data[1]))), axis=1)  # (B)
+                max_next_vals = tf.reduce_max(target_network.predict_on_batch(tf.convert_to_tensor(convert_shape(data[1]))), axis=1)  # (B)
                 td_targets = data[3] + args.gamma * max_next_vals * (1.0 - data[4])  # (B)
 
                 with tf.GradientTape() as tape:
@@ -193,3 +195,22 @@ if __name__=='__main__':
             # Updating the target network.
             if global_step % args.update_frequency == 0:
                 target_network = tf.keras.models.clone_model(deep_q_network)
+
+    # Saving the trained model.
+    if args.save_model:
+        ckpt_path = f"checkpoints/{run_name}/{args.exp_name}-dqn.ckpt"
+        deep_q_network.save_weights(ckpt_path)
+        print(f"A new model has been saved to {ckpt_path}.")
+
+        episodic_returns = evaluate(
+            deep_q_network,
+            ckpt_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            epsilon=0.05,
+            record=args.record
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            tf.summary.scalar("eval/episodic_return", episodic_return, idx)
