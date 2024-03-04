@@ -68,16 +68,16 @@ if __name__=='__main__':
     # Arguments for the setting.
     parser.add_argument('--seed', type=int, default=0, help="The random seed.")
     parser.add_argument('--env_id', type=str, required=True, help="The environment to try.")
-    parser.add_argument('--exp_name', type=str, default="dqn", help="Any free-from string to indicate the experiment name.")
+    parser.add_argument('--exp_name', type=str, default="dqn", help="Any free-form string to indicate the name of this experiment.")
     parser.add_argument('--track', action='store_true', help="Setting whether to track the training using Wandb or not.")
     parser.add_argument('--record', action='store_true', help="Setting whether to record the video of the agent or not.")
     parser.add_argument('--buffer_size', type=int, default=1e4, help="The size of the replay buffer.")
     parser.add_argument('--plotting_frequency', type=int, default=100, help="The frequency of step for plotting into the Tensorboard.")
     parser.add_argument('--save_model', action='store_true', help="Setting whether to save the trained model.")
 
-    # Arguments for trianing the policy.
+    # Arguments for training the policy.
     parser.add_argument('--total_timesteps', type=int, default=1e7, help="The total timesteps of the experiment.")
-    parser.add_argument('--start_eps', type=float, default=1.0, help="The starting value of epslion.")
+    parser.add_argument('--start_eps', type=float, default=1.0, help="The starting value of epsilon.")
     parser.add_argument('--end_eps', type=float, default=1e-2, help="The ending value of epsilon.")
     parser.add_argument('--exploration_fraction', type=float, default=0.1, help="The fraction of the steps to adjust epsilon.")
     parser.add_argument('--learning_starting_step', type=int, default=8e4, help="The step when the learning will start.")
